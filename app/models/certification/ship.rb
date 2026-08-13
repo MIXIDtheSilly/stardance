@@ -412,7 +412,6 @@ module Certification
     after_save :apply_verdict_to_project!, if: :saved_change_to_status?
     after_save_commit :notify_owner!, if: -> { saved_change_to_status? && !pending? }
     after_save_commit :post_verdict_to_hardware_review_channel!, if: -> { saved_change_to_status? && !pending? && project&.hardware? }
-    after_create_commit :invite_owner_to_hardware_review_channel!, if: -> { project&.hardware? }
 
     # Timeline cards for decided reviews sort by when the verdict landed.
     def decided_on

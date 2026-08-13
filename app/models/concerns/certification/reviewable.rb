@@ -59,12 +59,6 @@ module Certification
       claim_expires_at.nil? || claim_expires_at < Time.current
     end
 
-    def invite_owner_to_hardware_review_channel!
-      InviteToHardwareReviewChannelJob.perform_later(owner) if owner
-    rescue StandardError => e
-      Rails.logger.error("#{self.class.name} ##{id} invite_owner_to_hardware_review_channel! failed: #{e.message}")
-    end
-
     def post_verdict_to_hardware_review_channel!
       locals = notification_locals.slice(:project_title, :project_url, :approved, :reviewer_name, :feedback)
       locals[:review_type] = is_a?(Certification::FundingRequest) ? "design" : "build"
