@@ -36,6 +36,7 @@ Rails.application.config.after_initialize do
         gorse_recommendations
         gorse_personalized_feed
         gorse_project_recommendations
+        feed_seen_mixer
         week_1_release
         hardware_flow
         ship_event_payouts
