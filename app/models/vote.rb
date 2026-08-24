@@ -194,8 +194,10 @@ class Vote < ApplicationRecord
   def discarded? = discarded || events.exists?(event_type: "vote_flag_accepted")
 
   def auto_discard!(properties: {})
+    credit_reversed = false
+
     with_lock do
-      return if discarded?
+      return false if discarded?
 
       update!(discarded: true)
       events.create!(
@@ -205,9 +207,16 @@ class Vote < ApplicationRecord
         ship_event: ship_event,
         properties: properties.to_h.merge(automated: true)
       )
+
+      if Flipper.enabled?(:discarded_vote_credit_reversal, user)
+        user.increment!(:vote_balance, -1)
+        credit_reversed = true
+      end
     end
 
+    Notifications::Votes::Discarded.notify(recipient: user) if credit_reversed
     ShipEventPayoutRefreshJob.perform_later(ship_event_id)
+    true
   end
 
   private
