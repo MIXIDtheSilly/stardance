@@ -508,6 +508,12 @@ class Project < ApplicationRecord
     @_latest_funding_request = certification_funding_requests.order(created_at: :desc).first
   end
 
+  # The open fraud flag on this project, if any. The hardware review page derives
+  # its "flagged for fraud" state from this rather than a dedicated column.
+  def pending_fraud_report
+    reports.pending.where(reason: "fraud").order(created_at: :desc).first
+  end
+
   # Funding reviews to interleave into the project timeline: every request the
   # owner has a standing outcome for - pending (awaiting a verdict), approved,
   # or returned. Showing all of them, rather than only the latest, lets an older
