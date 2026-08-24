@@ -34,7 +34,7 @@
 #
 class Vote < ApplicationRecord
   FLAG_COST = 5
-  MAX_BANKED_VOTES = 30
+  MAX_BANKED_VOTES = 6
   MIN_SCORE = 1
   MAX_SCORE = 9
 
