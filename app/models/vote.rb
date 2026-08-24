@@ -3,6 +3,7 @@
 # Table name: votes
 #
 #  id                            :bigint           not null, primary key
+#  auto_discard_checked_at       :datetime
 #  demo_opened                   :boolean          default(FALSE), not null
 #  discarded                     :boolean          default(FALSE), not null
 #  originality_score             :integer
@@ -99,6 +100,7 @@ class Vote < ApplicationRecord
 
   scope :payout_countable, -> {
     where(discarded: false)
+      .where.not(auto_discard_checked_at: nil)
       .where.not(id: Vote::Event.accepted_vote_flags.select(:vote_id))
   }
 
