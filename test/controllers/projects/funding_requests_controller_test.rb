@@ -3,6 +3,7 @@ require "test_helper"
 class Projects::FundingRequestsControllerTest < ActionDispatch::IntegrationTest
   setup do
     Flipper.enable(:hardware_flow)
+    Flipper.enable(:hardware_action_items)
 
     @owner = create_user(slack_id: "U_FRC_OWNER", display_name: "frc-owner", verified: true)
     @project = Project.create!(title: "Funding bot")
@@ -13,7 +14,10 @@ class Projects::FundingRequestsControllerTest < ActionDispatch::IntegrationTest
     sign_in @owner
   end
 
-  teardown { Flipper.disable(:hardware_flow) }
+  teardown do
+    Flipper.disable(:hardware_flow)
+    Flipper.disable(:hardware_action_items)
+  end
 
   # Vote debt is the price of shipping (Post::ShipEvent::VOTE_COST_PER_SHIP).
   # Asking for funding is not shipping - the builder hasn't produced anything for
@@ -168,6 +172,35 @@ class Projects::FundingRequestsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".funding-request-card .help-badge", count: 0
   end
 
+  test "a resubmission that ticks nothing is refused" do
+    returned_request(feedback: "close!\n- add a BOM\n- fix tolerances")
+
+    assert_no_difference -> { @project.certification_funding_requests.count } do
+      post project_funding_request_path(@project),
+           params: { complexity_tier: 2, requested_amount: 40 }
+    end
+
+    assert_match(/everything your reviewer asked for/, flash[:alert])
+  end
+
+  test "a resubmission that ticks every action item goes through" do
+    request = returned_request(feedback: "close!\n- add a BOM\n- fix tolerances")
+
+    assert_difference -> { @project.certification_funding_requests.count }, 1 do
+      post project_funding_request_path(@project),
+           params: acknowledging(request, indices: [ 0, 1 ])
+    end
+  end
+
+  test "a returned request without action items resubmits freely" do
+    returned_request(feedback: "just tidy up the wiring photo and send it back")
+
+    assert_difference -> { @project.certification_funding_requests.count }, 1 do
+      post project_funding_request_path(@project),
+           params: { complexity_tier: 2, requested_amount: 40 }
+    end
+  end
+
   private
 
   def reviewer
@@ -179,9 +212,20 @@ class Projects::FundingRequestsControllerTest < ActionDispatch::IntegrationTest
   end
 
   def returned_request(feedback:)
-    @project.certification_funding_requests.create!(
+    request = @project.certification_funding_requests.create!(
       user: @owner, complexity_tier: 2, requested_amount_cents: 4_000, status: :pending
-    ).update!(reviewer: reviewer, status: :returned, feedback: feedback)
+    )
+    request.update!(reviewer: reviewer, status: :returned, feedback: feedback)
+    request
+  end
+
+  def acknowledging(request, indices:)
+    {
+      complexity_tier: 2,
+      requested_amount: 40,
+      acknowledged_action_items: indices.map(&:to_s),
+      action_items_digest: request.action_items_digest
+    }
   end
 
   def add_devlog(project)

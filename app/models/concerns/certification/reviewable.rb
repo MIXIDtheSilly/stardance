@@ -158,6 +158,75 @@ module Certification
       status.to_s.in?(DECIDED_STATUSES)
     end
 
+    # --- action items --------------------------------------------------------
+
+    ACTION_ITEM_LINE = /\A[[:blank:]]*-[[:blank:]]+(\S.*?)[[:blank:]]*\z/
+
+    def action_items
+      parsed_feedback[:items]
+    end
+
+    def feedback_prose
+      parsed_feedback[:prose]
+    end
+
+    # The feedback split into ordered blocks for display: a run of prose lines
+    # becomes a :prose segment and a run of "- " lines an :items segment, in the
+    # order the reviewer wrote them. feedback_prose and action_items flatten the
+    # whole thing (for the digest and the resubmission gate); this keeps the
+    # bullets in place, so a closing line written after the list still renders
+    # after the list rather than being hoisted above it.
+    def feedback_segments
+      segments = []
+      prose = []
+
+      flush_prose = lambda do
+        text = prose.join.strip
+        segments << { type: :prose, text: text } unless text.empty?
+        prose.clear
+      end
+
+      feedback.to_s.each_line do |line|
+        if (item = line.chomp[ACTION_ITEM_LINE, 1])
+          flush_prose.call
+          if segments.last && segments.last[:type] == :items
+            segments.last[:items] << item
+          else
+            segments << { type: :items, items: [ item ] }
+          end
+        else
+          prose << line
+        end
+      end
+      flush_prose.call
+
+      segments
+    end
+
+    def gates_resubmission?
+      action_items.any?
+    end
+
+    def action_items_digest
+      items = action_items
+      return if items.empty?
+
+      Digest::SHA256.hexdigest(items.join("\n"))
+    end
+
+    def action_items_blocker(acknowledged:, digest:)
+      return nil unless gates_resubmission?
+      return :unacknowledged if digest.blank?
+      return :stale unless digest == action_items_digest
+
+      # Integer(…, exception: false) rather than to_i: the params are whatever the
+      # client posted, and a hash-shaped value has no to_i.
+      ticked = Array(acknowledged).filter_map { |index| Integer(index, exception: false) }
+      return :unacknowledged unless action_items.each_index.all? { |index| ticked.include?(index) }
+
+      nil
+    end
+
     # --- wrong-queue corrections ---------------------------------------------
     #
     # A reviewer who opens a submission that belongs in the other hardware queue
@@ -245,6 +314,21 @@ module Certification
     end
 
     private
+
+    # action_items and feedback_prose each scan the feedback with the regex, and
+    # both are read several times per timeline render. Parse once and memoize,
+    # keyed on the feedback so an edit on the same record re-parses.
+    def parsed_feedback
+      return @parsed_feedback if @parsed_feedback && @parsed_feedback[:source] == feedback
+
+      @parsed_feedback = {
+        source: feedback,
+        # Frozen: the memo is shared across reads, so an in-place mutation by a
+        # caller would corrupt every later action_items/digest read on this record.
+        items: feedback.to_s.each_line.filter_map { |line| line.chomp[ACTION_ITEM_LINE, 1] }.freeze,
+        prose: feedback.to_s.each_line.reject { |line| ACTION_ITEM_LINE.match?(line.chomp) }.join.strip.freeze
+      }
+    end
 
     # Overridden where a submission has a public artifact to hide (a ship has a
     # Post::ShipEvent on the timeline; a funding request is members-only already).

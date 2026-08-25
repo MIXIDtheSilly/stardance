@@ -505,7 +505,26 @@ class Project < ApplicationRecord
   # The latest funding request (for displaying approved amount, status, etc.).
   def latest_funding_request
     return @_latest_funding_request if defined?(@_latest_funding_request)
-    @_latest_funding_request = certification_funding_requests.order(created_at: :desc).first
+    @_latest_funding_request = certification_funding_requests.order(created_at: :desc, id: :desc).first
+  end
+
+  # The review the action-item gate answers to. Views and controllers have to
+  # agree on which record this is or a builder can be shown one checklist and
+  # judged against another, so there is one definition.
+  def latest_ship_review
+    return @_latest_ship_review if defined?(@_latest_ship_review)
+    @_latest_ship_review = ship_reviews.order(created_at: :desc, id: :desc).first
+  end
+
+  # with_lock (and any explicit reload) refreshes the row but leaves these
+  # request-scoped memos in place, so a value read before the lock would leak a
+  # pre-lock snapshot into the locked section. Drop them whenever the record
+  # reloads. remove_instance_variable, not nil: the memos guard on `defined?`.
+  def reload(*)
+    %i[@_latest_ship_review @_latest_funding_request @_has_any_funding_request].each do |ivar|
+      remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+    end
+    super
   end
 
   # The open fraud flag on this project, if any. The hardware review page derives
