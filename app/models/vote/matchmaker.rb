@@ -1,5 +1,7 @@
 class Vote::Matchmaker
-  EARLIEST_WEIGHT = 60
+  EARLIEST_BASE_WEIGHT = 60
+  EARLIEST_DAILY_WEIGHT_INCREASE = 5
+  EARLIEST_MAX_WEIGHT = 80
   HOURS_GATE_MULTIPLIER = 3
   HOURS_GATE_EXEMPT_AFTER = 50.0
   PAID_FALLBACK_SAMPLE_SIZE = 50
@@ -31,19 +33,35 @@ class Vote::Matchmaker
 
   private
     def pick_from(pool)
-      if rand(100) < EARLIEST_WEIGHT
-        earliest_in(pool) || near_payout_in(pool)
+      earliest = earliest_in(pool)
+      return unless earliest
+
+      if rand(100) < earliest_weight_for(earliest)
+        earliest
       else
-        near_payout_in(pool) || earliest_in(pool)
+        near_payout_in(pool) || earliest
       end
     end
 
     def earliest_in(pool)
-      pool.order(:created_at, Arel.sql("RANDOM()")).first
+      pool.order(
+        Arel.sql("COALESCE(voting_started_at, post_ship_events.created_at) ASC"),
+        Arel.sql("RANDOM()")
+      ).first
     end
 
     def near_payout_in(pool)
-      pool.order(Vote.countable_count_for_ship_events.desc, created_at: :asc).first
+      pool.order(
+        Vote.countable_count_for_ship_events.desc,
+        Arel.sql("COALESCE(voting_started_at, post_ship_events.created_at) ASC")
+      ).first
+    end
+
+    def earliest_weight_for(ship_event)
+      voting_started_at = ship_event.voting_started_at || ship_event.created_at
+      days_in_voting = [ (Time.current - voting_started_at) / 1.day, 0 ].max
+
+      [ EARLIEST_BASE_WEIGHT + (days_in_voting * EARLIEST_DAILY_WEIGHT_INCREASE), EARLIEST_MAX_WEIGHT ].min
     end
 
     def gated_pool
