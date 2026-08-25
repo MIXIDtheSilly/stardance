@@ -73,6 +73,6 @@ jobs:
             else
               WEBHOOK="$WEBHOOK_PLATFORM"
             fi
-            curl -s -o /dev/null -w "%{http_code}" \
+            curl --fail-with-body --silent --show-error \
               -X GET "$WEBHOOK" \
               -H "Authorization: Bearer $COOLIFY_TOKEN"
