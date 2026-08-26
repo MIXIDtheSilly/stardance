@@ -16,6 +16,14 @@ class Admin::Certification::ShipPolicy < ApplicationPolicy
   # Same bar as a verdict: only the reviewer holding the claim may re-route it.
   def flag_queue_mismatch? = update?
 
+  # Reversing a decided review rewinds a verdict and can cancel a live HCB grant.
+  # The reviewer who made the call may take their own verdict back, and an admin
+  # may reverse any decided review. Never on your own project.
+  def undo?
+    return false unless user && not_own_project?
+    user.admin? || own_review?
+  end
+
   def set_bonus_stardust? = user&.admin?
 
   def report_fraud? = user&.can_review?
@@ -31,6 +39,8 @@ class Admin::Certification::ShipPolicy < ApplicationPolicy
   end
 
   private
+
+  def own_review? = record.reviewer_id == user.id
 
   def not_own_project?
     !user.memberships.exists?(project_id: record.project_id)
