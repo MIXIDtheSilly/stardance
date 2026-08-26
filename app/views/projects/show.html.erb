@@ -20,6 +20,7 @@
   viewer_follow = @viewer_follow
   total_hours = @total_hours || (@project.duration_seconds / 3600.0).round
   can_edit_project = @can_edit_project
+  is_owner = @is_owner
   admin_editing_project = @admin_editing_project
   # Only highlight the unfinished sections when the user arrived via the
   # "Complete project info" button (which adds ?complete=1).
@@ -498,6 +499,13 @@
                   <% else %>
                     <%= edit_project_link %>
                   <% end %>
+                <% elsif is_owner && !can_edit_project %>
+                  <button type="button" class="project-show__pill project-show__pill--outline" aria-disabled="true"
+                          data-controller="tooltip"
+                          data-tooltip-message-value="Your project is under review. Editing is locked until it's decided."
+                          data-tooltip-position-value="top">
+                    Edit project
+                  </button>
                 <% end %>
 
                 <% if current_user && !is_member %>
