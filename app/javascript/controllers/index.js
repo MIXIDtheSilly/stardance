@@ -16,12 +16,6 @@ application.register("address-select", AddressSelectController);
 import AdminLedgerChartController from "./admin_ledger_chart_controller";
 application.register("admin-ledger-chart", AdminLedgerChartController);
 
-import RatingDashboardChartController from "./rating_dashboard_chart_controller";
-application.register("rating-dashboard-chart", RatingDashboardChartController);
-
-import MegaDashChartController from "./mega_dash_chart_controller";
-application.register("mega-dash-chart", MegaDashChartController);
-
 import BioEditorController from "./bio_editor_controller";
 application.register("bio-editor", BioEditorController);
 
@@ -232,6 +226,9 @@ application.register("markdown-preview", MarkdownPreviewController);
 import MediaCarouselController from "./media_carousel_controller";
 application.register("media-carousel", MediaCarouselController);
 
+import MegaDashChartController from "./mega_dash_chart_controller";
+application.register("mega-dash-chart", MegaDashChartController);
+
 import MentionAutocompleteController from "./mention_autocomplete_controller";
 application.register("mention-autocomplete", MentionAutocompleteController);
 
@@ -316,6 +313,9 @@ application.register("project-thumbs-scroll", ProjectThumbsScrollController);
 import ProjectTypeController from "./project_type_controller";
 application.register("project-type", ProjectTypeController);
 
+import RatingDashboardChartController from "./rating_dashboard_chart_controller";
+application.register("rating-dashboard-chart", RatingDashboardChartController);
+
 import ReadMoreController from "./read_more_controller";
 application.register("read-more", ReadMoreController);
 
@@ -325,11 +325,11 @@ application.register("readme-image", ReadmeImageController);
 import RerollPollController from "./reroll_poll_controller";
 application.register("reroll-poll", RerollPollController);
 
-import ReviewFeedbackImagesController from "./review_feedback_images_controller";
-application.register("review-feedback-images", ReviewFeedbackImagesController);
-
 import RevealOnScrollController from "./reveal_on_scroll_controller";
 application.register("reveal-on-scroll", RevealOnScrollController);
+
+import ReviewFeedbackImagesController from "./review_feedback_images_controller";
+application.register("review-feedback-images", ReviewFeedbackImagesController);
 
 import RocketArcController from "./rocket_arc_controller";
 application.register("rocket-arc", RocketArcController);
@@ -351,6 +351,12 @@ application.register("shop", ShopController);
 
 import ShopItemEnableGuardController from "./shop_item_enable_guard_controller";
 application.register("shop-item-enable-guard", ShopItemEnableGuardController);
+
+import ShopItemTypeConverterController from "./shop_item_type_converter_controller";
+application.register(
+  "shop-item-type-converter",
+  ShopItemTypeConverterController,
+);
 
 import ShopWishlistController from "./shop_wishlist_controller";
 application.register("shop-wishlist", ShopWishlistController);
