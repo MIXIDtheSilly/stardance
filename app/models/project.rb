@@ -411,6 +411,8 @@ class Project < ApplicationRecord
       now = Time.current
       update!(deleted_at: now)
 
+      hackatime_projects.update_all(project_id: nil, updated_at: now) unless shipped?
+
       devlogs.find_each { |d| d.update_columns(deleted_at: now) }
 
       Post::Repost.unscoped.where(original_post_id: posts.pluck(:id)).find_each do |repost|
