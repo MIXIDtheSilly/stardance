@@ -583,6 +583,7 @@ class Project < ApplicationRecord
     description.to_s
   end
 
+
   # Deduplicated because every member of a hardware project gets their own
   # User::HackatimeProject row under the same name, and callers treat this as a
   # set: it's joined into the Airtable sync and the devlog key snapshot, and

@@ -461,6 +461,12 @@ Rails.application.routes.draw do
           post :decision
         end
       end
+
+      # Public API: authenticated with a user's personal API key (see
+      # Api::V1::PublicApiController).
+      resources :projects, only: [ :index, :show ]
+
+      get "docs", to: "docs#index"
     end
     namespace :slack do
       post "events", to: "events#create"
@@ -580,6 +586,7 @@ Rails.application.routes.draw do
     resource :balance, only: [ :show ]
     resource :settings, only: [ :update ] do
       post :streamer_mode, on: :member, action: :toggle_streamer_mode
+      post :regenerate_api_key, on: :member
     end
     resources :dismissals, only: [ :create ]
     resources :reports, only: [ :index ]
