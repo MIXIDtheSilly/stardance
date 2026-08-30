@@ -303,12 +303,37 @@ class User < ApplicationRecord
     end
   end
 
+  # Stardust standing is only public for users who opted into the leaderboard
+  # (see User.on_leaderboard). Everyone else reads as unknown, except to
+  # themselves.
+  def stardust_for(viewer)
+    return approx_balance if id == viewer&.id || preference&.leaderboard_optin
+
+    nil
+  end
+
+  # Seconds logged across the user's devlogs. of_devlogs joins the table
+  # directly, so Post::Devlog's soft-delete default scope has to be restated.
+  def devlog_seconds_total
+    devlog_seconds_scope.sum(Post::Devlog.arel_table[:duration_seconds])
+  end
+
+  def devlog_seconds_today
+    devlog_seconds_scope
+      .where(post_devlogs: { created_at: Time.zone.now.all_day })
+      .sum(Post::Devlog.arel_table[:duration_seconds])
+  end
+
   API_KEY_PREFIX = "sd_sk_".freeze
 
   # Public-API key. Not auto-assigned on create — only ever set when the user
   # clicks "Generate"/"Regenerate" in Settings (see My::SettingsController).
   def regenerate_api_key
     update!(api_key: "#{API_KEY_PREFIX}#{SecureRandom.hex(20)}")
+  end
+
+  def devlog_seconds_scope
+    Post.of_devlogs(join: true).where(user_id: id, post_devlogs: { deleted_at: nil })
   end
 
   def ambassador_referral_payload(hours_logged:, hours_approved:)

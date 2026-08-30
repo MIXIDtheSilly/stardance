@@ -14,7 +14,7 @@ json.enabled do
   end
 end
 
-json.ticket_cost do
+json.stardust_cost do
   json.base_cost shop_item.ticket_cost
   Shop::Regionalizable::REGION_CODES.each do |code|
     json.set! code.downcase, shop_item.price_for_region(code)

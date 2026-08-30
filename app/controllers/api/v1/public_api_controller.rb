@@ -22,6 +22,14 @@ class Api::V1::PublicApiController < ActionController::API
       { limit: PER_PAGE, max_limit: MAX_PER_PAGE }
     end
 
+    # Flavortown-style "me" alias: resolves to the caller, who need not be
+    # publicly discoverable themselves. Any other id must be in +scope+.
+    def find_api_user(id, scope: User.discoverable)
+      return current_api_user if id == "me"
+
+      scope.find(id)
+    end
+
     # Pagy raises on a limit below 1, so reject the values it can't take rather
     # than letting them 500.
     def validate_limit!

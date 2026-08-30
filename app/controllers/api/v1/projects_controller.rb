@@ -1,6 +1,7 @@
 class Api::V1::ProjectsController < Api::V1::PublicApiController
   def index
     scope = api_scope.order(created_at: :desc)
+    scope = scope.where(id: find_api_user(params[:user_id]).projects.select(:id)) if params[:user_id].present?
     scope = scope.where("title ILIKE :q OR description ILIKE :q", q: "%#{Project.sanitize_sql_like(params[:query])}%") if params[:query].present?
 
     @pagy, @projects = pagy(:offset, scope, **pagination_options)

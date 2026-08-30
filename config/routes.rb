@@ -469,6 +469,9 @@ Rails.application.routes.draw do
       end
       resources :devlogs, only: [ :index, :show ]
       resources :shop_items, path: "shop", only: [ :index, :show ]
+      resources :users, only: [ :index, :show ] do
+        resources :projects, only: [ :index ]
+      end
     end
     namespace :slack do
       post "events", to: "events#create"

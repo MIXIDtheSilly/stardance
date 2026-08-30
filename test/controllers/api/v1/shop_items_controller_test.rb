@@ -56,19 +56,19 @@ class Api::V1::ShopItemsControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal %w[enabled_au enabled_ca enabled_eu enabled_in enabled_uk enabled_us enabled_xx],
                  item["enabled"].keys.sort
-    assert_equal %w[au base_cost ca eu in uk us xx], item["ticket_cost"].keys.sort
-    assert_equal 100, item["ticket_cost"]["base_cost"]
-    assert_equal 100, item["ticket_cost"]["us"]
+    assert_equal %w[au base_cost ca eu in uk us xx], item["stardust_cost"].keys.sort
+    assert_equal 100, item["stardust_cost"]["base_cost"]
+    assert_equal 100, item["stardust_cost"]["us"]
   end
 
-  test "ticket_cost reflects a sale discount" do
+  test "stardust_cost reflects a sale discount" do
     @item.update!(sale_percentage: 25)
 
     get api_v1_shop_item_path(@item), headers: auth_headers
 
     assert_response :success
-    assert_equal 100, response.parsed_body["ticket_cost"]["base_cost"]
-    assert_equal 75, response.parsed_body["ticket_cost"]["us"]
+    assert_equal 100, response.parsed_body["stardust_cost"]["base_cost"]
+    assert_equal 75, response.parsed_body["stardust_cost"]["us"]
   end
 
   test "old_prices lists previous ticket costs" do
@@ -78,7 +78,7 @@ class Api::V1::ShopItemsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal [ 100 ], response.parsed_body["old_prices"]
-    assert_equal 150, response.parsed_body["ticket_cost"]["base_cost"]
+    assert_equal 150, response.parsed_body["stardust_cost"]["base_cost"]
   end
 
   test "attached_shop_item_ids lists the item's accessories" do
