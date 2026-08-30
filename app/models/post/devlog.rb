@@ -105,6 +105,13 @@ class Post::Devlog < ApplicationRecord
   before_validation :normalize_line_endings
   validates :body, presence: true, length: { maximum: BODY_MAX_LENGTH }
 
+  # The comments a reader should see — the Ruby-side counterpart to
+  # Comment.for_thread, so a preloaded +comments+ association is reused rather
+  # than re-queried per devlog (the API serializes a whole page in one go).
+  def thread_comments
+    comments.reject { |comment| comment.user.banned? }.sort_by(&:created_at)
+  end
+
   private
 
   # Normalize line endings (\r\n for now) to \n
