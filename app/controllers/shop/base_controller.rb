@@ -26,7 +26,7 @@ class Shop::BaseController < ApplicationController
   def load_shop_items
     shop_page_data = ShopItem.cached_shop_page_data
     @shop_items = shop_page_data[:buyable_standalone]
-    @shop_items = @shop_items.reject { |item| item.type.in?(%w[ShopItem::FreeStickers ShopItem::TutorialNothing]) }
+    @shop_items = @shop_items.reject { |item| item.type.in?(ShopItem::TUTORIAL_TYPES) }
     @recently_added_items = shop_page_data[:recently_added]
     @user_balance = current_user&.cached_balance || 0
 

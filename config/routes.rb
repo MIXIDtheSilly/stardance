@@ -468,6 +468,7 @@ Rails.application.routes.draw do
         resources :devlogs, only: [ :index ]
       end
       resources :devlogs, only: [ :index, :show ]
+      resources :shop_items, path: "shop", only: [ :index, :show ]
     end
     namespace :slack do
       post "events", to: "events#create"

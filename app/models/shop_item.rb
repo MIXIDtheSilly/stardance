@@ -292,6 +292,10 @@ class ShopItem < ApplicationRecord
     "ShopItem::OutpostTicket"
   ].freeze
 
+  # Onboarding-flow items: claimable through the shop tutorial, never listed
+  # for browsing.
+  TUTORIAL_TYPES = %w[ShopItem::FreeStickers ShopItem::TutorialNothing].freeze
+
   scope :shown_in_carousel, -> { where(show_in_carousel: true) }
   scope :manually_fulfilled, -> { where(type: MANUAL_FULFILLMENT_TYPES) }
   scope :enabled, -> { where(enabled: true, draft: [ nil, false ]).where("shop_items.enabled_until IS NULL OR shop_items.enabled_until > ?", Time.current) }
@@ -300,6 +304,13 @@ class ShopItem < ApplicationRecord
   scope :recently_added, -> { where(created_at: RECENTLY_ADDED_WINDOW.ago..).order(created_at: :desc) }
   scope :drafts, -> { where(draft: true) }
   scope :published, -> { where(draft: [ nil, false ]) }
+  # Everything the shop offers for browsing: published, listed, purchasable on
+  # its own, not held back as a mission prize, and not a tutorial artefact.
+  scope :browsable, -> {
+    enabled.listed.buyable_standalone
+      .where(mission_prize_only: false)
+      .where.not(type: TUTORIAL_TYPES)
+  }
 
   belongs_to :seller, class_name: "User", foreign_key: :user_id, optional: true
   belongs_to :created_by, class_name: "User", foreign_key: :created_by_user_id, optional: true
@@ -441,10 +452,13 @@ class ShopItem < ApplicationRecord
     c > 2 ? c : (past_purchases.to_i > 2 ? past_purchases : nil)
   end
 
+  # Filtered in Ruby rather than with a `where` so a preloaded +versions+
+  # association is reused instead of re-queried per item — the shop API
+  # serializes the whole catalogue in one go.
   def old_prices
-    versions.where(event: "update")
-      .map { |v| v.object_changes&.dig("ticket_cost")&.first }
-      .compact
+    versions
+      .select { |version| version.event == "update" }
+      .filter_map { |version| version.object_changes&.dig("ticket_cost")&.first }
       .uniq
   end
 
