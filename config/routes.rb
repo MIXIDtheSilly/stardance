@@ -465,6 +465,9 @@ Rails.application.routes.draw do
       # Public API: authenticated with a user's personal API key (see
       # Api::V1::PublicApiController).
       resources :projects, only: [ :index, :show ]
+      resources :users, only: [ :index, :show ] do
+        resources :projects, only: [ :index ]
+      end
     end
     namespace :slack do
       post "events", to: "events#create"

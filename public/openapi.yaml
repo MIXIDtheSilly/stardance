@@ -3,8 +3,8 @@ info:
   title: Stardance API
   version: "1"
   description: |
-    A read-only public API for Stardance projects. You need an API key to
-    use this! Go to your [account settings](/?settings=1) to get one.
+    A read-only public API for Stardance projects and users. You need an API
+    key to use this! Go to your [account settings](/?settings=1) to get one.
 servers:
   - url: /api/v1
 security:
@@ -37,6 +37,40 @@ components:
           items: { type: integer }
         banner_url: { type: string, format: uri, nullable: true, description: Full-size banner image }
         banner_thumb_url: { type: string, format: uri, nullable: true, description: 400x210 webp thumbnail }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        slack_id: { type: string, nullable: true }
+        display_name: { type: string, nullable: true }
+        avatar: { type: string, format: uri }
+        project_ids:
+          type: array
+          items: { type: integer }
+        stardust:
+          type: integer
+          nullable: true
+          description: >-
+            Current Stardust balance. Only disclosed for users who opted into
+            the leaderboard, and for the authenticated user; null otherwise.
+    Achievement:
+      type: object
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string }
+    UserDetail:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            vote_count: { type: integer, nullable: true }
+            like_count: { type: integer, description: Likes this user has given }
+            devlog_seconds_total: { type: integer }
+            devlog_seconds_today: { type: integer }
+            achievements:
+              type: array
+              items: { $ref: "#/components/schemas/Achievement" }
     Pagination:
       type: object
       properties:
@@ -54,6 +88,12 @@ components:
       in: path
       required: true
       schema: { type: integer }
+    user_id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: User ID, or "me" for the authenticated user
     page:
       name: page
       in: query
@@ -65,8 +105,14 @@ components:
       in: query
       required: false
       schema: { type: integer, maximum: 100 }
-      description: Number of results per page (max 100)
+      description: Number of results per page (defaults to 25, max 100)
   responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "Limit cannot exceed 100" }
     Unauthorized:
       description: Missing or invalid API key
       content:
@@ -74,7 +120,7 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
           example: { error: "Invalid API key" }
     NotFound:
-      description: Project not found
+      description: Resource not found
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -120,6 +166,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Project" }
                   pagination: { $ref: "#/components/schemas/Pagination" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /projects/{id}:
@@ -136,6 +183,79 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users:
+    get:
+      summary: List users
+      tags: [ Users ]
+      description: "Fetch a page of users. Ratelimit: 5 reqs/min."
+      operationId: listUsers
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+        - name: query
+          in: query
+          required: false
+          schema: { type: string }
+          description: Search users by display name or Slack ID
+      responses:
+        "200":
+          description: A page of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: "#/components/schemas/User" }
+                  pagination: { $ref: "#/components/schemas/Pagination" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/user_id"
+    get:
+      summary: Get a user
+      tags: [ Users ]
+      description: "Fetch a specific user by ID, with their activity stats. Use \"me\" for the authenticated user. Ratelimit: 30 reqs/min."
+      operationId: getUser
+      responses:
+        "200":
+          description: A single user with additional stats
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserDetail" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users/{id}/projects:
+    parameters:
+      - $ref: "#/components/parameters/user_id"
+    get:
+      summary: List projects for a user
+      tags: [ Users ]
+      description: "Fetch a page of projects belonging to a user. Use \"me\" for the authenticated user. Ratelimit: 20 reqs/min."
+      operationId: listUserProjects
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: A page of the user's projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/Project" }
+                  pagination: { $ref: "#/components/schemas/Pagination" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
