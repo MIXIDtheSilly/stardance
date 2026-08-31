@@ -3,8 +3,9 @@ info:
   title: Stardance API
   version: "1"
   description: |
-    A read-only public API for Stardance projects. You need an API key to
-    use this! Go to your [account settings](/?settings=1) to get one.
+    A read-only public API for Stardance projects and the shop. You need an
+    API key to use this! Go to your [account settings](/?settings=1) to get
+    one.
 servers:
   - url: /api/v1
 security:
@@ -37,6 +38,58 @@ components:
           items: { type: integer }
         banner_url: { type: string, format: uri, nullable: true, description: Full-size banner image }
         banner_thumb_url: { type: string, format: uri, nullable: true, description: 400x210 webp thumbnail }
+    RegionEnabled:
+      type: object
+      description: Whether the item is buyable in each region, after region fallbacks are applied
+      properties:
+        enabled_us: { type: boolean }
+        enabled_eu: { type: boolean }
+        enabled_uk: { type: boolean }
+        enabled_in: { type: boolean }
+        enabled_ca: { type: boolean }
+        enabled_au: { type: boolean }
+        enabled_xx: { type: boolean, description: Rest of world }
+    StardustCost:
+      type: object
+      description: Stardust price per region, with any sale discount already applied
+      properties:
+        base_cost: { type: integer, nullable: true, description: Unadjusted cost before regional offsets and sales }
+        us: { type: integer }
+        eu: { type: integer }
+        uk: { type: integer }
+        in: { type: integer }
+        ca: { type: integer }
+        au: { type: integer }
+        xx: { type: integer }
+    ShopItem:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        long_description: { type: string, nullable: true }
+        type: { type: string, description: "Item class, e.g. ShopItem::WarehouseItem" }
+        limited: { type: boolean, nullable: true }
+        stock: { type: integer, nullable: true }
+        max_qty: { type: integer, nullable: true }
+        one_per_person_ever: { type: boolean, nullable: true }
+        buyable_by_self: { type: boolean, nullable: true }
+        show_in_carousel: { type: boolean, nullable: true }
+        accessory_tag: { type: string, nullable: true }
+        sale_percentage: { type: integer, nullable: true }
+        agh_contents: { nullable: true, description: Contents of a grant item }
+        old_prices:
+          type: array
+          description: Previous ticket costs, oldest first
+          items: { type: integer }
+        attached_shop_item_ids:
+          type: array
+          description: Accessory items that can be added to this one
+          items: { type: integer }
+        image_url: { type: string, format: uri, nullable: true, description: Full-size item image }
+        image_thumb_url: { type: string, format: uri, nullable: true, description: 160px webp thumbnail }
+        enabled: { $ref: "#/components/schemas/RegionEnabled" }
+        stardust_cost: { $ref: "#/components/schemas/StardustCost" }
     Pagination:
       type: object
       properties:
@@ -65,8 +118,14 @@ components:
       in: query
       required: false
       schema: { type: integer, maximum: 100 }
-      description: Number of results per page (max 100)
+      description: Number of results per page (defaults to 25, max 100)
   responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "Limit cannot exceed 100" }
     Unauthorized:
       description: Missing or invalid API key
       content:
@@ -74,7 +133,7 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
           example: { error: "Invalid API key" }
     NotFound:
-      description: Project not found
+      description: Resource not found
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -120,6 +179,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Project" }
                   pagination: { $ref: "#/components/schemas/Pagination" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /projects/{id}:
@@ -136,6 +196,47 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /shop:
+    get:
+      summary: List shop items
+      tags: [ Shop ]
+      description: "Fetch a page of the items currently listed in the shop. Ratelimit: 5 reqs/min."
+      operationId: listShopItems
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: A page of shop items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shop_items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ShopItem" }
+                  pagination: { $ref: "#/components/schemas/Pagination" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /shop/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      summary: Get a shop item
+      tags: [ Shop ]
+      description: "Fetch a specific shop item by ID. Ratelimit: 30 reqs/min."
+      operationId: getShopItem
+      responses:
+        "200":
+          description: A single shop item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopItem" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
