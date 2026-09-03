@@ -124,14 +124,24 @@ module ExternalDashboard
 
       case response.status
       when 200..299
+        return missing_cert_id_result(response.status, body) unless valid_cert_id?(cert_id)
         Result.new(status: :ok, cert_id: cert_id, http_status: response.status)
       when 409
+        return missing_cert_id_result(response.status, body) unless valid_cert_id?(cert_id)
         Result.new(status: :duplicate, cert_id: cert_id, http_status: response.status)
       when 400..499
         Result.new(status: :client_error, http_status: response.status, error: Client.error_from(body))
       else
         Result.new(status: :server_error, http_status: response.status, error: Client.error_from(body))
       end
+    end
+
+    def valid_cert_id?(cert_id)
+      cert_id.is_a?(String) && cert_id.match?(Certification::Ship::EXTERNAL_CERTIFICATION_ID_PATTERN)
+    end
+
+    def missing_cert_id_result(status, body)
+      Result.new(status: :server_error, http_status: status, error: "response missing a valid certId: #{Client.error_from(body) || "(unparseable body)"}")
     end
   end
 end
