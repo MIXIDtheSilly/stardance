@@ -478,7 +478,7 @@ GEM
       webfinger (~> 2.0)
     optimist (3.2.1)
     ostruct (0.6.3)
-    pagy (43.6.1)
+    pagy (43.6.2)
       json
       uri
       yaml
@@ -634,8 +634,8 @@ GEM
       rspec-mocks (>= 3.13.0, < 5.0.0)
       rspec-support (>= 3.13.0, < 5.0.0)
     rspec-support (3.13.7)
-    rubocop (1.89.0)
-      json (~> 2.3)
+    rubocop (1.90.0)
+      json (>= 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
       parallel (>= 1.10)
@@ -867,7 +867,7 @@ DEPENDENCIES
   omniauth-oauth2
   omniauth-rails_csrf_protection
   omniauth_openid_connect
-  pagy (~> 43.5)
+  pagy (~> 43.6)
   paper_trail
   pg (~> 1.1)
   phlex-rails

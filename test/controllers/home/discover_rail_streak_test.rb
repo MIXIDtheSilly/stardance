@@ -5,7 +5,15 @@ require "test_helper"
 class Home::DiscoverRailStreakTest < ActionDispatch::IntegrationTest
   PIXEL = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=".freeze
 
+  # The widget renders a real calendar month, and two of its shapes only exist
+  # away from the edges of the program: a run started yesterday sits outside the
+  # grid on the 1st, and the next-month arrow is gone once the last calendar
+  # month is on screen. Pin a mid-month Tuesday so the clock cannot decide
+  # whether these pass.
+  FROZEN_NOW = Time.utc(2026, 8, 18, 12, 0, 0)
+
   setup do
+    travel_to FROZEN_NOW
     Flipper.enable(:sticky_streaks)
     @user = create_user(slack_id: "U-rail-sticky", display_name: "railsticky", verified: true)
     @user.update!(onboarded_at: Time.current, has_gotten_free_stickers: true)
@@ -66,6 +74,28 @@ class Home::DiscoverRailStreakTest < ActionDispatch::IntegrationTest
     assert_select ".sticky-claim", count: 0
     assert_select ".sticky-start__summary", count: 0
     assert_select ".streak-widget__week .streak-mark__star", minimum: 1
+  end
+
+  test "a broken run goes back to plain stars from the miss onwards" do
+    today = @user.streak_today_date
+    streak = StickyStreak.create!(user: @user, started_on: today - 3)
+    # Day 1 kept, day 2 missed, so days 2 and on are no longer part of the run.
+    StreakActivity.create!(user: @user, activity_date: streak.date_for(1),
+                           coded_seconds: StreakActivity::DAILY_GOAL_SECONDS)
+    StickyStreakReward.create!(day_number: 1, shop_item: sticker)
+    StickyStreakReward.create!(day_number: 3, shop_item: sticker)
+
+    get streak_home_discover_rail_path
+
+    assert_response :success
+    assert_predicate streak, :failed?
+    assert_select ".streak-widget__cal-grid .streak-mark__sticker", 1,
+                  "only the day banked before the miss keeps its sticker"
+    assert_select ".streak-widget__week .streak-mark__sticker", { count: 0 },
+                  "this week is all past the miss, so it is ordinary streak days"
+    assert_select ".streak-widget__week .streak-mark__star", minimum: 1
+    assert_select ".streak-mark--unknown", { count: 0 },
+                  "a dead day must not render as a sticker slot waiting for art"
   end
 
   test "clicking a sticker opens the shared zoom dialog" do

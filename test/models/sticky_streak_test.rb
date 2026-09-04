@@ -53,6 +53,26 @@ class StickyStreakTest < ActiveSupport::TestCase
     assert @streak.active?
   end
 
+  test "crediting a missed day repairs a broken run" do
+    complete_days(1, 2, 4)
+    StickyStreakReward.create!(day_number: 4, shop_item: @item)
+
+    assert_predicate @streak, :failed?
+    assert_equal 3, @streak.missed_day
+
+    StreakActivity.credit!(
+      user: @user, date: @streak.date_for(3),
+      granted_by: create_user(slack_id: "U-sticky-helper", display_name: "stickyhelper"),
+      reason: "Hackatime lost the day"
+    )
+
+    repaired = StickyStreak.find(@streak.id)
+    assert_not_predicate repaired, :failed?
+    assert_nil repaired.missed_day
+    assert_includes repaired.completed_days, 3
+    assert repaired.claimable_day?(4), "the day after the repaired one is claimable again"
+  end
+
   test "a day is claimable once completed and a reward is configured" do
     complete_days(1, 2)
     StickyStreakReward.create!(day_number: 2, shop_item: @item)
@@ -71,6 +91,47 @@ class StickyStreakTest < ActiveSupport::TestCase
     assert_not @streak.claimable_day?(2)
     assert_not @streak.claimable_day?(3), "a completed day after the miss stays locked"
     assert_equal [ 1 ], @streak.claimable_days
+  end
+
+  test "the calendar stops dressing up days from the miss onwards" do
+    complete_days(1, 2)
+    log_seconds(3, StreakActivity::DAILY_GOAL_SECONDS - 1)
+    complete_days(4)
+
+    assert @streak.decorates?(@streak.date_for(1)), "days before the miss keep their sticker"
+    assert @streak.decorates?(@streak.date_for(2))
+    assert_not @streak.decorates?(@streak.date_for(3)), "the day that broke the run goes plain"
+    assert_not @streak.decorates?(@streak.date_for(4)),
+               "a day coded after the run died is an ordinary streak day again"
+    assert_not @streak.decorates?(@streak.date_for(StickyStreak::LENGTH))
+  end
+
+  test "a live run dresses up every day in its window and nothing outside it" do
+    complete_days(1, 2, 3, 4)
+
+    assert_not @streak.failed?
+    (1..StickyStreak::LENGTH).each do |day|
+      assert @streak.decorates?(@streak.date_for(day)), "day #{day} should still be part of the run"
+    end
+    assert_not @streak.decorates?(@streak.started_on - 1)
+    assert_not @streak.decorates?(@streak.last_date + 1)
+  end
+
+  test "crediting the missed day brings the stickers back" do
+    complete_days(1, 2, 4)
+    log_seconds(3, StreakActivity::DAILY_GOAL_SECONDS - 1)
+
+    assert_not @streak.decorates?(@streak.date_for(4))
+
+    StreakActivity.credit!(
+      user: @user, date: @streak.date_for(3),
+      granted_by: create_user(slack_id: "U-sticky-fixer", display_name: "stickyfixer"),
+      reason: "Hackatime lost the day"
+    )
+
+    repaired = StickyStreak.find(@streak.id)
+    assert repaired.decorates?(@streak.date_for(3))
+    assert repaired.decorates?(@streak.date_for(4))
   end
 
   test "recording a claim closes the day" do

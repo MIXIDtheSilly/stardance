@@ -679,7 +679,12 @@ Rails.application.routes.draw do
         resource  :vote_balance,        only: [ :update ]
         resource  :ysws_override,       only: [ :update ]
         resources :identities,          only: [ :destroy ]
-        resources :votes,               only: [ :index ]
+        resources :streak_credits,      only: [ :create, :destroy ]
+        resources :votes,               only: [ :index ] do
+          scope module: :votes do
+            resource :discard, only: [ :create ]
+          end
+        end
       end
     end
 

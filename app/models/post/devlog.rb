@@ -184,6 +184,11 @@ class Post::Devlog < ApplicationRecord
 
   private
 
+  # Normalize line endings (\r\n for now) to \n
+  def normalize_line_endings
+    self.body = body.gsub("\r\n", "\n") if body.present?
+  end
+
   def handle_post_creation
     PostCreationToSlackJob.perform_later(self)
   end

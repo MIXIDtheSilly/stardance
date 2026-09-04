@@ -99,9 +99,11 @@ module Admin
       "Raffle::Participant" => "Raffle::Participant",
       "Raffle::Referral" => "Raffle::Referral",
       "Raffle::Week" => "Raffle::Week",
+      "Certification::Ysws" => "Certification::Ysws",
       "StickyStreak" => "StickyStreak",
       "StickyStreakReward" => "StickyStreakReward",
-      "StickyStreakClaim" => "StickyStreakClaim"
+      "StickyStreakClaim" => "StickyStreakClaim",
+      "StreakActivity" => "StreakActivity"
     }.freeze
 
     def generate_csv(versions)
