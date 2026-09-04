@@ -54,19 +54,16 @@ module ExternalDashboard
       cert.owner&.slack_id.presence
     end
 
+    BACKFILL_ONLY_KEYS = %i[status createdAt decidedAt reviewerSlackId].freeze
+
     def payload
-      base_payload.merge(cert.pending? ? pending_payload : decision_payload).compact
+      built = base_payload.merge(cert.pending? ? pending_payload : decision_payload)
+      built = built.except(*BACKFILL_ONLY_KEYS) unless @backfill
+      built.compact
     end
 
-    # The dashboard treats explicit status/createdAt on a live ingest as a
-    # backfilled cert, so pending ones only carry them on backfill pushes.
     def pending_payload
-      return {} unless @backfill
-
-      {
-        status: "pending",
-        createdAt: cert.created_at&.iso8601
-      }
+      { status: "pending", createdAt: cert.created_at&.iso8601 }
     end
 
     def base_payload
@@ -80,7 +77,8 @@ module ExternalDashboard
         updatedProject: project.update_description.presence,
         submittedBy: submitted_by.presence,
         links: links.presence,
-        metadata: { devTime: dev_time_seconds }
+        metadata: { devTime: dev_time_seconds },
+        backfill: (true if @backfill)
       }
     end
 

@@ -120,6 +120,19 @@ module Certification
       false
     end
 
+    def chain_pending_return
+      return nil unless approved? && external_certification_id.present? && post_ship_event_id.present?
+
+      proj = project
+      return nil unless proj
+
+      active_return = proj.ship_reviews.pending.where.not(returned_by_id: nil)
+                          .find_by(post_ship_event_id: post_ship_event_id)
+      return nil unless active_return
+
+      transfer_external_certification_id_to!(active_return) ? active_return : nil
+    end
+
     ACCEPTED_VIDEO_TYPES = %w[video/mp4 video/webm video/quicktime].freeze
 
     # Canned request-changes responses offered on the review form. The opener

@@ -45,11 +45,20 @@ module ExternalDashboard
         next unless row
         next if cert.project&.hardware?
         next unless matches_project_name?(cert, row)
+        next unless cert.assign_external_certification_id!(row["id"]) == :persisted
 
-        healed += 1 if cert.assign_external_certification_id!(row["id"]) == :persisted
+        healed += 1
+        chain_pending_return(cert)
       end
 
       healed
+    end
+
+    def chain_pending_return(cert)
+      active_return = cert.chain_pending_return
+      return unless active_return
+
+      ExternalDashboard::CertReturnJob.perform_later(active_return.id)
     end
 
     def matches_project_name?(cert, row)
